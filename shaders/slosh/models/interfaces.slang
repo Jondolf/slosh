@@ -7,15 +7,26 @@ public struct ModelUpdateResult {
     public Mat<float> kirchoff_stress;
     // Negative means unchanged. If >= 0, the model modified init_volume (e.g., swell).
     public float init_volume;
+    // Negative means unchanged. If >= 0, the model modified the particle phase
+    // (e.g. a fracture model reporting damage). Only used for reporting/rendering.
+    public float phase;
 
     public __init(Mat stress) {
         this.kirchoff_stress = stress;
         this.init_volume = -1.0;
+        this.phase = -1.0;
     }
 
     public __init(Mat stress, float init_volume) {
         this.kirchoff_stress = stress;
         this.init_volume = init_volume;
+        this.phase = -1.0;
+    }
+
+    public __init(Mat stress, float init_volume, float phase) {
+        this.kirchoff_stress = stress;
+        this.init_volume = init_volume;
+        this.phase = phase;
     }
 }
 

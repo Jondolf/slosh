@@ -132,6 +132,11 @@ func particle_update(
             particles_props[particle_id].init_volume = update_result.init_volume;
         }
 
+        // Write back the phase if the model modified it (e.g. a fracture model reporting damage).
+        if (update_result.phase >= 0.0 && update_result.phase != props.phase) {
+            particles_props[particle_id].phase = update_result.phase;
+        }
+
         /*
          * Affine matrix for APIC transfer.
          */

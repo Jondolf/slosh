@@ -85,7 +85,7 @@ public struct DruckerPragerPlasticity {
     //        return DruckerPragerResult(state, new_def_grad);
     //    }
         if (this.lambda == 0) {
-            // Plasticity is disable on this particle.
+            // Plasticity is disabled on this particle.
             return DruckerPragerResult(state, deformation_gradient);
         }
 
@@ -164,7 +164,7 @@ public struct DruckerPragerPlasticity {
 
     public func project(state: DruckerPragerPlasticState, deformation_gradient: float3x3) -> DruckerPragerResult {
         if (this.lambda == 0) {
-            // Plasticity is disable on this particle.
+            // Plasticity is disabled on this particle.
             return DruckerPragerResult(state, deformation_gradient);
         }
 

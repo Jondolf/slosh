@@ -4,6 +4,7 @@ import slosh.models.interfaces;
 import slosh.models.linear_elasticity;
 import slosh.models.neo_hookean_elasticity;
 import slosh.models.drucker_prager;
+import slosh.models.rock;
 import slosh.solver.particle;
 import slosh.aliases;
 
@@ -13,8 +14,9 @@ public enum class DefaultParticleModelType {
     ElasticNeoHookean = 1,
     SandLinear = 2,
     SandNeoHookean = 3,
+    Rock = 4,
     // Provided to help downstream users extend with their own enum.
-    LEN = 4,
+    LEN = 5,
 }
 
 public struct SandModel<ElasticModel> {
@@ -31,7 +33,7 @@ public struct SandModel<ElasticModel> {
 // TODO: hard-coding this is quite fragile as is must match the size of
 //       the host-side enum. Should it be configured by the host?
 // This **MUST** match the byte size of `GpuParticleModel` on the rust side.
-public static const uint DEFAULT_MODEL_BYTES_STRIDE = 52;
+public static const uint DEFAULT_MODEL_BYTES_STRIDE = 64;
 
 // NOTE: the BYTES_STRIDE parameter exists so that third-party models extending this default model
 //       can specify their own stride if it differ from the default one (i.e. if the extended union
@@ -86,6 +88,16 @@ public struct DefaultParticleModel<let BYTES_STRIDE: uint = DEFAULT_MODEL_BYTES_
                 def_grad = projection.deformation_gradient;
                 return ModelUpdateResult(stress);
             }
+            case DefaultParticleModelType::Rock: {
+                let model = models.Load<RockModel>(model_offset);
+                let result = model.update_rock(def_grad);
+                if (result.damage > 0.0) {
+                    models.Store<DruckerPragerPlasticState>(model_offset + model.state_offset(), result.plastic_state);
+                    models.Store<float>(model_offset + model.failure_offset(), result.damage);
+                }
+                def_grad = result.deformation_gradient;
+                return ModelUpdateResult(result.kirchoff_stress, -1.0, 1.0 - result.damage);
+            }
             default:
                 return ModelUpdateResult(Mat<float>(0.0));
         }
@@ -120,6 +132,10 @@ public struct DefaultParticleModel<let BYTES_STRIDE: uint = DEFAULT_MODEL_BYTES_
             case DefaultParticleModelType::SandNeoHookean: {
                 let model = models.Load<SandModel<NeoHookeanModel>>(model_offset);
                 return model.elastic.timestep_bound(particle_density0, particle_velocity, def_grad_det, 1.0, cell_width);
+            }
+            case DefaultParticleModelType::Rock: {
+                let model = models.Load<RockModel>(model_offset);
+                return model.timestep_bound(particle_density0, particle_velocity, def_grad_det, cell_width);
             }
             default:
                 return 0.0;

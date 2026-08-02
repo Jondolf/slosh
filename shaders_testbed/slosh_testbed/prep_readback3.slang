@@ -67,8 +67,10 @@ func prep_readback(
             let color_xyz = (float3(1.0) - svd.S) / 0.005 + float3(0.2);
             instances[particle_id].color = float4(color_xyz, color.w);
         } else if (mode == PHASE) {
-            let phase = particles_props[particle_id].phase;
-            instances[particle_id].color = float4(0.0, 0.4 * phase, 0.4 * (1.0 - phase), color.w);
+            // 1 = intact (gray), 0 = fully damaged/broken (orange).
+            let phase = clamp(particles_props[particle_id].phase, 0.0, 1.0);
+            let phase_color = lerp(float3(0.85, 0.35, 0.1), float3(0.4, 0.4, 0.45), phase);
+            instances[particle_id].color = float4(phase_color, color.w);
         } else if (mode == CDF_NORMALS) {
             let particle_normal = particles_cdf[particle_id].normal;
             if (all(particle_normal == float3(0.0))) {

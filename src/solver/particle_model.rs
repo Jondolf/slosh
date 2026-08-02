@@ -1,4 +1,4 @@
-use crate::models::{DruckerPrager, DruckerPragerPlasticState, ElasticCoefficients};
+use crate::models::{DruckerPrager, DruckerPragerPlasticState, ElasticCoefficients, RockModel};
 use bytemuck::{NoUninit, Pod, Zeroable};
 
 /// Material model for MPM particles.
@@ -15,6 +15,9 @@ pub enum ParticleModel {
     SandLinear(SandModel),
     /// Sand with Neo-Hookean elasticity and Drucker-Prager plasticity.
     SandNeoHookean(SandModel),
+    /// Elastic-brittle rock that permanently switches to Drucker-Prager plasticity
+    /// once its stress reaches the failure envelope.
+    Rock(RockModel),
 }
 
 impl Default for ParticleModel {
@@ -77,6 +80,31 @@ impl ParticleModel {
             elastic: ElasticCoefficients::from_young_modulus(young_modulus, poisson_ratio),
         })
     }
+
+    /// Creates an elastic-brittle rock model.
+    ///
+    /// The rock is elastic until stress reaches the failure envelope (tensile cutoff + Mohr-Coulomb),
+    /// after which the particle permanently behaves as a granular material.
+    ///
+    /// # Arguments
+    ///
+    /// * `young_modulus` - Elastic stiffness (Pa)
+    /// * `poisson_ratio` - Elastic Poisson's ratio (0.0 - 0.5)
+    /// * `tensile_strength` - Maximum principal tensile stress before failure (Pa)
+    /// * `compressive_strength` - Uniaxial compressive strength (Pa)
+    pub fn rock(
+        young_modulus: f32,
+        poisson_ratio: f32,
+        tensile_strength: f32,
+        compressive_strength: f32,
+    ) -> Self {
+        ParticleModel::Rock(RockModel::new(
+            young_modulus,
+            poisson_ratio,
+            tensile_strength,
+            compressive_strength,
+        ))
+    }
 }
 
 /// GPU-compatible version of [`ParticleModel`] with explicit padding.
@@ -88,18 +116,22 @@ impl ParticleModel {
 #[repr(u32)]
 pub enum GpuParticleModel {
     /// Linear elastic model with padding for GPU alignment.
-    ElasticLinear(ElasticCoefficients, [u32; 9]) = 0,
+    ElasticLinear(ElasticCoefficients, [u32; 12]) = 0,
     /// Neo-Hookean elastic model with padding for GPU alignment.
-    ElasticNeoHookean(ElasticCoefficients, [u32; 9]) = 1,
+    ElasticNeoHookean(ElasticCoefficients, [u32; 12]) = 1,
     /// Sand with linear elasticity and Drucker-Prager plasticity.
-    SandLinear(SandModel) = 2,
+    SandLinear(SandModel, [u32; 3]) = 2,
     /// Sand with Neo-Hookean elasticity and Drucker-Prager plasticity.
-    SandNeoHookean(SandModel) = 3,
+    SandNeoHookean(SandModel, [u32; 3]) = 3,
+    /// Elastic-brittle rock with a granular post-failure response.
+    Rock(RockModel) = 4,
 }
 
 // IMPORTANT: this assertions is here to reduce risks of `GpuParticleModel` from mismatching
 //            `SloshParticleModel` in
-static_assertions::assert_eq_size!(GpuParticleModel, [u8; 52]);
+static_assertions::assert_eq_size!(GpuParticleModel, [u8; 64]);
+static_assertions::assert_eq_size!(SandModel, [u8; 48]);
+static_assertions::assert_eq_size!(RockModel, [u8; 60]);
 
 impl From<ParticleModel> for GpuParticleModel {
     fn from(val: ParticleModel) -> Self {
@@ -110,10 +142,13 @@ impl From<ParticleModel> for GpuParticleModel {
             ParticleModel::ElasticNeoHookean(elastic_neo_hookean) => {
                 GpuParticleModel::ElasticNeoHookean(elastic_neo_hookean, [0; _])
             }
-            ParticleModel::SandLinear(sand_linear) => GpuParticleModel::SandLinear(sand_linear),
-            ParticleModel::SandNeoHookean(sand_neo_hookean) => {
-                GpuParticleModel::SandNeoHookean(sand_neo_hookean)
+            ParticleModel::SandLinear(sand_linear) => {
+                GpuParticleModel::SandLinear(sand_linear, [0; _])
             }
+            ParticleModel::SandNeoHookean(sand_neo_hookean) => {
+                GpuParticleModel::SandNeoHookean(sand_neo_hookean, [0; _])
+            }
+            ParticleModel::Rock(rock) => GpuParticleModel::Rock(rock),
         }
     }
 }
@@ -127,10 +162,11 @@ impl From<GpuParticleModel> for ParticleModel {
             GpuParticleModel::ElasticNeoHookean(elastic_neo_hookean, _) => {
                 ParticleModel::ElasticNeoHookean(elastic_neo_hookean)
             }
-            GpuParticleModel::SandLinear(sand_linear) => ParticleModel::SandLinear(sand_linear),
-            GpuParticleModel::SandNeoHookean(sand_neo_hookean) => {
+            GpuParticleModel::SandLinear(sand_linear, _) => ParticleModel::SandLinear(sand_linear),
+            GpuParticleModel::SandNeoHookean(sand_neo_hookean, _) => {
                 ParticleModel::SandNeoHookean(sand_neo_hookean)
             }
+            GpuParticleModel::Rock(rock) => ParticleModel::Rock(rock),
         }
     }
 }

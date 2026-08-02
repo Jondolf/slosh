@@ -3,13 +3,16 @@
 //! This module provides material models that define how particles respond to deformation:
 //! - [`ElasticCoefficients`]: Linear elasticity using Lamé parameters
 //! - [`DruckerPrager`]: Drucker-Prager plasticity model for granular materials (sand, soil)
+//! - [`RockModel`]: Elastic-brittle rock that turns granular once its failure envelope is reached
 //!
 //! Material models are used by particles to compute stress from deformation gradients.
 
 use bytemuck::{Pod, Zeroable};
 pub use drucker_prager::{DruckerPrager, DruckerPragerPlasticState};
+pub use rock::{RockFailureState, RockModel};
 
 mod drucker_prager;
+mod rock;
 
 /// Computes Lamé parameters (λ, μ) from Young's modulus and Poisson's ratio.
 ///
