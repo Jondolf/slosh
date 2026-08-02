@@ -23,12 +23,6 @@ import slosh.aliases;
     extern struct ParticleModel : IParticleModel;
 #endif
 
-
-public struct Phase {
-    public float phase;
-    public float max_stretch;
-}
-
 [shader("compute")]
 [numthreads(64, 1, 1)]
 func particle_update(
@@ -123,7 +117,7 @@ func particle_update(
         /*
          * Constitutive model.
          */
-        let update_data = ParticleUpdateData(dt, cell_width, particle_id, kin.affine, props.init_volume, props.phase);
+        let update_data = ParticleUpdateData(dt, cell_width, particle_id, kin.affine, props.init_volume, props.damage);
         let update_result = model.update(particles_model, update_data, def_grad);
 
         // Write back init_volume if the model modified it (e.g., swell).
@@ -132,9 +126,9 @@ func particle_update(
             particles_props[particle_id].init_volume = update_result.init_volume;
         }
 
-        // Write back the phase if the model modified it (e.g. a fracture model reporting damage).
-        if (update_result.phase >= 0.0 && update_result.phase != props.phase) {
-            particles_props[particle_id].phase = update_result.phase;
+        // Write back the damage if the model modified it (e.g. a fracture model reporting breakage).
+        if (update_result.damage >= 0.0 && update_result.damage != props.damage) {
+            particles_props[particle_id].damage = update_result.damage;
         }
 
         /*

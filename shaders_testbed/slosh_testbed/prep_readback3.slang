@@ -22,7 +22,7 @@ struct RenderConfig {
 static const uint DEFAULT = 0;
 static const uint VOLUME = 1;
 static const uint VELOCITY = 2;
-static const uint PHASE = 3;
+static const uint DAMAGE = 3;
 static const uint CDF_NORMALS = 4;
 static const uint CDF_DISTANCES = 5;
 static const uint CDF_SIGNS = 6;
@@ -66,11 +66,11 @@ func prep_readback(
             let svd = Svd3(def_grad);
             let color_xyz = (float3(1.0) - svd.S) / 0.005 + float3(0.2);
             instances[particle_id].color = float4(color_xyz, color.w);
-        } else if (mode == PHASE) {
-            // 1 = intact (gray), 0 = fully damaged/broken (orange).
-            let phase = clamp(particles_props[particle_id].phase, 0.0, 1.0);
-            let phase_color = lerp(float3(0.85, 0.35, 0.1), float3(0.4, 0.4, 0.45), phase);
-            instances[particle_id].color = float4(phase_color, color.w);
+        } else if (mode == DAMAGE) {
+            // 0 = intact (gray), 1 = fully damaged/broken (orange).
+            let damage = clamp(particles_props[particle_id].damage, 0.0, 1.0);
+            let damage_color = lerp(float3(0.4, 0.4, 0.45), float3(0.85, 0.35, 0.1), damage);
+            instances[particle_id].color = float4(damage_color, color.w);
         } else if (mode == CDF_NORMALS) {
             let particle_normal = particles_cdf[particle_id].normal;
             if (all(particle_normal == float3(0.0))) {

@@ -5,7 +5,6 @@ use crate::rbd::shapes::ShapeBuffers;
 use crate::sampling;
 use crate::sampling::{GpuSampleIds, SamplingBuffers, SamplingParams};
 use crate::solver::particle_model::GpuParticleModelData;
-use bytemuck::{Pod, Zeroable};
 use encase::ShaderType;
 use rapier::geometry::ColliderSet;
 use slang_hal::{BufferUsages, backend::Backend};
@@ -46,8 +45,10 @@ pub struct ParticleDynamics {
     /// Applies a damping force proportional to velocity: F_damp = -damping * m * v.
     /// Typical values: 0.0 (no damping) to 10.0 (heavy damping).
     pub damping: f32,
-    /// The particle phase (used by materials that can break).
-    pub phase: f32,
+    /// How damaged the particle is: `0.0` while intact, `1.0` once fully broken.
+    ///
+    /// Only written by material models that can break.
+    pub damage: f32,
     /// Whether this particle is active (1) or disabled (0).
     pub enabled: u32,
     /// Whether this particle is fixed (1) or dynamic (0).
@@ -77,7 +78,7 @@ impl ParticleDynamics {
             mass: init_volume * density,
             damping: 0.0,
             cdf: Cdf::default(),
-            phase: 1.0,
+            damage: 0.0,
             enabled: 1,
             fixed: 0,
         }
@@ -118,7 +119,7 @@ impl ParticleDynamics {
             init_volume: self.init_volume,
             init_radius: self.init_radius,
             damping: self.damping,
-            phase: self.phase,
+            damage: self.damage,
             fixed: self.fixed,
         }
     }
@@ -160,41 +161,12 @@ pub struct ParticleProperties {
     pub init_radius: f32,
     /// Rayleigh mass-proportional damping coefficient (1/s).
     pub damping: f32,
-    /// The particle phase (used by materials that can break).
-    pub phase: f32,
+    /// How damaged the particle is: `0.0` while intact, `1.0` once fully broken.
+    ///
+    /// Only written by material models that can break.
+    pub damage: f32,
     /// Whether this particle is fixed (1) or dynamic (0).
     pub fixed: u32,
-}
-
-/// Phase field data for fracture mechanics (experimental).
-///
-/// Tracks material damage and maximum stretch for particle-based fracture.
-#[derive(Copy, Clone, PartialEq, Debug, Pod, Zeroable)]
-#[repr(C)]
-pub struct ParticlePhase {
-    /// Phase field value (1.0 = intact, 0.0 = broken).
-    pub phase: f32,
-    /// Maximum allowable stretch before fracture.
-    pub max_stretch: f32,
-}
-
-impl Default for ParticlePhase {
-    fn default() -> Self {
-        Self {
-            phase: 1.0,
-            max_stretch: f32::MAX,
-        }
-    }
-}
-
-impl ParticlePhase {
-    /// Creates a phase field value representing a fully broken particle.
-    pub fn broken() -> Self {
-        Self {
-            phase: 0.0,
-            max_stretch: -1.0,
-        }
-    }
 }
 
 /// Collision Detection Field (CDF) data for MPM-rigid body coupling.

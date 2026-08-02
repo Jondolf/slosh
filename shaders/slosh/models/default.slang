@@ -96,7 +96,7 @@ public struct DefaultParticleModel<let BYTES_STRIDE: uint = DEFAULT_MODEL_BYTES_
                     models.Store<float>(model_offset + model.failure_offset(), result.damage);
                 }
                 def_grad = result.deformation_gradient;
-                return ModelUpdateResult(result.kirchoff_stress, -1.0, 1.0 - result.damage);
+                return ModelUpdateResult(result.kirchoff_stress, -1.0, result.damage);
             }
             default:
                 return ModelUpdateResult(Mat<float>(0.0));

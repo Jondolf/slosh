@@ -7,26 +7,26 @@ public struct ModelUpdateResult {
     public Mat<float> kirchoff_stress;
     // Negative means unchanged. If >= 0, the model modified init_volume (e.g., swell).
     public float init_volume;
-    // Negative means unchanged. If >= 0, the model modified the particle phase
-    // (e.g. a fracture model reporting damage). Only used for reporting/rendering.
-    public float phase;
+    // How damaged the particle is: 0 = intact, 1 = fully broken.
+    // Negative means unchanged. Only used for reporting/rendering.
+    public float damage;
 
     public __init(Mat stress) {
         this.kirchoff_stress = stress;
         this.init_volume = -1.0;
-        this.phase = -1.0;
+        this.damage = -1.0;
     }
 
     public __init(Mat stress, float init_volume) {
         this.kirchoff_stress = stress;
         this.init_volume = init_volume;
-        this.phase = -1.0;
+        this.damage = -1.0;
     }
 
-    public __init(Mat stress, float init_volume, float phase) {
+    public __init(Mat stress, float init_volume, float damage) {
         this.kirchoff_stress = stress;
         this.init_volume = init_volume;
-        this.phase = phase;
+        this.damage = damage;
     }
 }
 
@@ -41,15 +41,15 @@ public struct ParticleUpdateData {
     public uint particle_id;
     public matrix<float, DIM, DIM> velocity_gradient;
     public float init_volume;
-    public float phase;
+    public float damage;
 
-    public __init(float dt, float cell_width, uint particle_id, matrix<float, DIM, DIM> velocity_gradient, float init_volume, float phase) {
+    public __init(float dt, float cell_width, uint particle_id, matrix<float, DIM, DIM> velocity_gradient, float init_volume, float damage) {
         this.dt = dt;
         this.cell_width = cell_width;
         this.particle_id = particle_id;
         this.velocity_gradient = velocity_gradient;
         this.init_volume = init_volume;
-        this.phase = phase;
+        this.damage = damage;
     }
 }
 

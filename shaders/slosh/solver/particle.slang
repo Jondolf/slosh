@@ -35,7 +35,7 @@ public struct ParticleProperties {
     public float init_volume;
     public float init_radius;
     public float damping;
-    public float phase;
+    public float damage;
     public uint fixed;
 }
 
