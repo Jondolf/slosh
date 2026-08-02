@@ -3,6 +3,13 @@
 - Fix a GPU validation error / panic on simulations with more than ~4.19M particles, caused by
   compute kernels dispatching more than 65535 workgroups along a single dimension. The affected 
   kernels now clamp the dispatch and grid-stride over the particles.
+- Add the `ParticleModel::rock` brittle-rock model that is elastic until the stress
+  reaches the failure envelope combining a tensile cutoff and a Mohr-Coulomb criterion,
+  after which it permanently switches to the Drucker-Prager granular response.
+- Add `ModelUpdateResult::damage` field for reporting and rendering.
+- Rename the `phase` field of `ParticleDynamics` / `ParticleProperties` to `damage`,
+  and flip its convention (`0.0` while intact and `1.0` once fully broken).
+- Remove `ParticlePhase` and the shader-side `Phase` struct.
 
 # v0.2.0 (27 Oct. 2025)
 - Add support for dynamic particle insertion.
