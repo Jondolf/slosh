@@ -10,6 +10,9 @@ import slosh.models.drucker_prager;
 import stensor.geometry.svd2;
 import stensor.geometry.svd_glam.svd3;
 
+static const float MAX_SIN_PHI = 0.95;
+static const float MAX_N_PHI = (1.0 + MAX_SIN_PHI) / (1.0 - MAX_SIN_PHI);
+
 /// Per-particle failure state of the rock model.
 public struct RockFailureState {
     /// Damage state of the particle.
@@ -130,10 +133,16 @@ public struct RockModel {
         // -min_stress > N_phi * (-max_stress) + UCS
         // <=> N_phi * max_stress - min_stress > UCS
         if (this.compressive_strength > 0.0) {
-            let sin_phi = clamp(sin(this.plastic.ha), 0.0, 0.95);
-            let n_phi = (1.0 + sin_phi) / (1.0 - sin_phi);
-            if (n_phi * max_stress - min_stress > this.compressive_strength) {
-                return true;
+            // If the condition fails for the maximum possible phi, it fails for all smaller ones too.
+            // This avoids computing sin(phi) and N_phi for most cases, as the Mohr-Coulomb criterion
+            // is only relevant for compressive stress states.
+            let n_phi_bound = select(max_stress >= 0.0, MAX_N_PHI, 1.0);
+            if (n_phi_bound * max_stress - min_stress > this.compressive_strength) {
+                let sin_phi = clamp(sin(this.plastic.ha), 0.0, MAX_SIN_PHI);
+                let n_phi = (1.0 + sin_phi) / (1.0 - sin_phi);
+                if (n_phi * max_stress - min_stress > this.compressive_strength) {
+                    return true;
+                }
             }
         }
 
