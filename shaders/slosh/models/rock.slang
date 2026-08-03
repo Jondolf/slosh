@@ -57,8 +57,7 @@ public struct RockModel {
     /// Principal Kirchhoff stresses of the intact (linear corotated elastic) response,
     /// computed from the singular values of the deformation gradient.
     ///
-    /// In the principal frame of `F = U S V^T`, the corotated model gives
-    /// `tau_i = 2 mu (s_i - 1) s_i + lambda (J - 1) J`. Positive values are tensile.
+    /// Positive values are tensile.
     public func principal_kirchoff_stress(singular_values: Vect<float>) -> Vect<float> {
         #if DIM == 2
         let j = singular_values.x * singular_values.y;
@@ -150,7 +149,7 @@ public struct RockModel {
     }
 
     /// Runs one constitutive update, using elastic response while intact,
-    // or Drucker-Prager response once the failure envelope has been crossed.
+    /// or Drucker-Prager response once the failure envelope has been crossed.
     public func update_rock(deformation_gradient: Mat<float>) -> RockUpdateResult {
         var damage = this.failure.damage;
 
